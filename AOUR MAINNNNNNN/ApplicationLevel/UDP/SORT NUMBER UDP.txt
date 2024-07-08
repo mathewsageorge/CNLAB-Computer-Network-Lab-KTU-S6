@@ -1,0 +1,220 @@
+Server Code (Using Bubble Sort)
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+#define PORT 8080
+#define MAXLINE 1024
+
+void bubbleSort(int arr[], int n) {
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - 1 - i; j++) {
+            if (arr[j] > arr[j + 1]) {
+                int temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+        }
+    }
+}
+
+int main() {
+    int sockfd;
+    char buffer[MAXLINE];
+    struct sockaddr_in servaddr, cliaddr;
+
+    // Creating socket file descriptor
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    memset(&cliaddr, 0, sizeof(cliaddr));
+
+    // Filling server information
+    servaddr.sin_family = AF_INET; // IPv4
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(PORT);
+
+    // Bind the socket with the server address
+    if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    int len, n;
+    len = sizeof(cliaddr); // len is value/result
+    n = recvfrom(sockfd, buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *)&cliaddr, &len);
+    buffer[n] = '\0';
+
+    // Convert received string to array of integers
+    int numbers[MAXLINE], count = 0;
+    char *token = strtok(buffer, " ");
+    while (token != NULL) {
+        numbers[count++] = atoi(token);
+        token = strtok(NULL, " ");
+    }
+
+    // Sort the array of numbers using bubble sort
+    bubbleSort(numbers, count);
+
+    // Convert sorted array back to string
+    char response[MAXLINE] = "";
+    for (int i = 0; i < count; i++) {
+        char num[12]; // Buffer to hold each number as a string
+        snprintf(num, 12, "%d ", numbers[i]);
+        strcat(response, num);
+    }
+
+    // Send the sorted list of numbers back to the client
+    sendto(sockfd, response, strlen(response), MSG_CONFIRM, (const struct sockaddr *)&cliaddr, len);
+    printf("Sorted numbers sent: %s\n", response);
+
+    close(sockfd);
+    return 0;
+}
+
+
+
+Sure! Let's update the server code to use bubble sort instead of qsort for sorting the list of numbers. Here's the updated server code:
+
+Server Code (Using Bubble Sort)
+c
+Copy code
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+#define PORT 8080
+#define MAXLINE 1024
+
+void bubbleSort(int arr[], int n) {
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - 1 - i; j++) {
+            if (arr[j] > arr[j + 1]) {
+                int temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+        }
+    }
+}
+
+int main() {
+    int sockfd;
+    char buffer[MAXLINE];
+    struct sockaddr_in servaddr, cliaddr;
+
+    // Creating socket file descriptor
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    memset(&cliaddr, 0, sizeof(cliaddr));
+
+    // Filling server information
+    servaddr.sin_family = AF_INET; // IPv4
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(PORT);
+
+    // Bind the socket with the server address
+    if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    int len, n;
+    len = sizeof(cliaddr); // len is value/result
+    n = recvfrom(sockfd, buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *)&cliaddr, &len);
+    buffer[n] = '\0';
+
+    // Convert received string to array of integers
+    int numbers[MAXLINE], count = 0;
+    char *token = strtok(buffer, " ");
+    while (token != NULL) {
+        numbers[count++] = atoi(token);
+        token = strtok(NULL, " ");
+    }
+
+    // Sort the array of numbers using bubble sort
+    bubbleSort(numbers, count);
+
+    // Convert sorted array back to string
+    char response[MAXLINE] = "";
+    for (int i = 0; i < count; i++) {
+        char num[12]; // Buffer to hold each number as a string
+        snprintf(num, 12, "%d ", numbers[i]);
+        strcat(response, num);
+    }
+
+    // Send the sorted list of numbers back to the client
+    sendto(sockfd, response, strlen(response), MSG_CONFIRM, (const struct sockaddr *)&cliaddr, len);
+    printf("Sorted numbers sent: %s\n", response);
+
+    close(sockfd);
+    return 0;
+}
+
+Client Code
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+#define PORT 8080
+#define MAXLINE 1024
+
+int main() {
+    int sockfd;
+    char buffer[MAXLINE];
+    struct sockaddr_in servaddr;
+
+    // Creating socket file descriptor
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+
+    // Filling server information
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(PORT);
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+
+    // Example list of unsorted numbers
+    char *numbers = "9 4 6 3 8 2 7 1 5";
+
+    // Send the list of unsorted numbers to the server
+    sendto(sockfd, numbers, strlen(numbers), MSG_CONFIRM, (const struct sockaddr *)&servaddr, sizeof(servaddr));
+    printf("Unsorted numbers sent: %s\n", numbers);
+
+    // Receive the sorted list of numbers from the server
+    int n, len = sizeof(servaddr);
+    n = recvfrom(sockfd, buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *)&servaddr, &len);
+    buffer[n] = '\0';
+
+    // Print the received sorted numbers
+    printf("Sorted numbers received: %s\n", buffer);
+
+    close(sockfd);
+    return 0;
+}
+

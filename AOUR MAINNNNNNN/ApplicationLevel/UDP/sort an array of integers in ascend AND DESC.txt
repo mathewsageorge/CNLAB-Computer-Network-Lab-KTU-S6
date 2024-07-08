@@ -1,0 +1,175 @@
+sort an array of integers in ascending and descending order. USING BUBBLE SORT
+CLIENT
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+#define PORT 8080
+#define MAXLINE 1024
+
+// Function to convert array to string
+void array_to_string(int arr[], int size, char *str) {
+    char buffer[10];
+    for (int i = 0; i < size; i++) {
+        sprintf(buffer, "%d", arr[i]);
+        strcat(str, buffer);
+        if (i < size - 1) {
+            strcat(str, " ");
+        }
+    }
+}
+
+// Driver code
+int main() {
+    int sockfd;
+    char buffer[MAXLINE];
+    struct sockaddr_in servaddr;
+
+    // Creating socket file descriptor
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+
+    // Filling server information
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(PORT);
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+
+    int n, len;
+
+    // Input array
+    int arr[] = {34, 15, 88, 2, 7, 3, 10};
+    int size = sizeof(arr) / sizeof(arr[0]);
+    char arr_str[MAXLINE] = "";
+    array_to_string(arr, size, arr_str);
+
+    sendto(sockfd, (const char *)arr_str, strlen(arr_str), MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+    printf("Array sent: %s\n", arr_str);
+
+    n = recvfrom(sockfd, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *) &servaddr, &len);
+    buffer[n] = '\0';
+    printf("Server: %s\n", buffer);
+
+    close(sockfd);
+    return 0;
+}
+
+SERVER
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+#define PORT 8080
+#define MAXLINE 1024
+
+// Function to perform bubble sort in ascending order
+void bubble_sort_asc(int arr[], int size) {
+    for (int i = 0; i < size - 1; i++) {
+        for (int j = 0; j < size - 1 - i; j++) {
+            if (arr[j] > arr[j + 1]) {
+                int temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+        }
+    }
+}
+
+// Function to perform bubble sort in descending order
+void bubble_sort_desc(int arr[], int size) {
+    for (int i = 0; i < size - 1; i++) {
+        for (int j = 0; j < size - 1 - i; j++) {
+            if (arr[j] < arr[j + 1]) {
+                int temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+        }
+    }
+}
+
+// Function to convert string to array
+void string_to_array(char *str, int *arr, int *size) {
+    char *token = strtok(str, " ");
+    int i = 0;
+    while (token != NULL) {
+        arr[i++] = atoi(token);
+        token = strtok(NULL, " ");
+    }
+    *size = i;
+}
+
+// Driver code
+int main() {
+    int sockfd;
+    char buffer[MAXLINE];
+    struct sockaddr_in servaddr, cliaddr;
+
+    // Creating socket file descriptor
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    memset(&cliaddr, 0, sizeof(cliaddr));
+
+    // Filling server information
+    servaddr.sin_family = AF_INET; // IPv4
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(PORT);
+
+    // Bind the socket with the server address
+    if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    int len, n;
+    len = sizeof(cliaddr); // len is value/result
+
+    while (1) {
+        n = recvfrom(sockfd, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *) &cliaddr, &len);
+        buffer[n] = '\0';
+
+        int arr[MAXLINE];
+        int size;
+        string_to_array(buffer, arr, &size);
+
+        int arr_asc[MAXLINE], arr_desc[MAXLINE];
+        memcpy(arr_asc, arr, size * sizeof(int));
+        memcpy(arr_desc, arr, size * sizeof(int));
+
+        bubble_sort_asc(arr_asc, size);
+        bubble_sort_desc(arr_desc, size);
+
+        char result[MAXLINE] = "Ascending: ";
+        char temp[MAXLINE] = "";
+        array_to_string(arr_asc, size, temp);
+        strcat(result, temp);
+
+        strcat(result, "\nDescending: ");
+        temp[0] = '\0';
+        array_to_string(arr_desc, size, temp);
+        strcat(result, temp);
+
+        sendto(sockfd, (const char *)result, strlen(result), MSG_CONFIRM, (const struct sockaddr *) &cliaddr, len);
+        printf("Client: %s\n", buffer);
+        printf("Sorted arrays sent: %s\n", result);
+    }
+
+    return 0;
+}

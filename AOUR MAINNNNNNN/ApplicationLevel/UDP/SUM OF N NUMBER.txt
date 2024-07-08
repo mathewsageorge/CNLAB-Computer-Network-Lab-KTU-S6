@@ -1,0 +1,133 @@
+SUM OF N NUMBER
+CLIENT
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+#define PORT 8080
+#define MAXLINE 1024
+
+// Driver code
+int main() {
+    int sockfd;
+    char buffer[MAXLINE];
+    struct sockaddr_in servaddr;
+
+    // Creating socket file descriptor
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+
+    // Filling server information
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(PORT);
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+
+    int n, len;
+    char num_str[MAXLINE];
+    printf("Enter a number: ");
+    fgets(num_str, MAXLINE, stdin);
+    num_str[strcspn(num_str, "\n")] = '\0'; // Remove newline character
+
+    sendto(sockfd, (const char *)num_str, strlen(num_str), MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+    printf("Number sent: %s\n", num_str);
+
+    n = recvfrom(sockfd, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *) &servaddr, &len);
+    buffer[n] = '\0';
+    printf("Server: %s\n", buffer);
+
+    close(sockfd);
+    return 0;
+}
+
+SERVER
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+#define PORT 8080
+#define MAXLINE 1024
+
+// Function to calculate the sum of the first n natural numbers
+unsigned long long sum_of_n_numbers(int num) {
+    return (unsigned long long)num * (num + 1) / 2;
+}
+
+// Driver code
+int main() {
+    int sockfd;
+    char buffer[MAXLINE];
+    struct sockaddr_in servaddr, cliaddr;
+
+    // Creating socket file descriptor
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    memset(&cliaddr, 0, sizeof(cliaddr));
+
+    // Filling server information
+    servaddr.sin_family = AF_INET; // IPv4
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(PORT);
+
+    // Bind the socket with the server address
+    if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    int len, n;
+    len = sizeof(cliaddr); // len is value/result
+
+    while (1) {
+        n = recvfrom(sockfd, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *) &cliaddr, &len);
+        buffer[n] = '\0';
+
+        int num = atoi(buffer);
+        unsigned long long result = sum_of_n_numbers(num);
+
+        char result_str[MAXLINE];
+        snprintf(result_str, MAXLINE, "Sum of the first %d natural numbers is %llu", num, result);
+
+        sendto(sockfd, (const char *)result_str, strlen(result_str), MSG_CONFIRM, (const struct sockaddr *) &cliaddr, len);
+        printf("Client: %s\n", buffer);
+        printf("Sum sent: %s\n", result_str);
+    }
+
+    return 0;
+}
+
+
+Compilation and Execution
+Compile the client and server code:
+
+sh
+Copy code
+gcc UDPClient.c -o client
+gcc UDPServer.c -o server
+Run the server:
+
+sh
+Copy code
+./server
+Run the client in a separate terminal:
+
+sh
+Copy code
+./client

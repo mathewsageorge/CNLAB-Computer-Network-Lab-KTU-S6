@@ -1,0 +1,131 @@
+SERVER
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <math.h>
+
+#define PORT 8080
+#define MAXLINE 1024
+
+// Function to compute the square root of a number
+double compute_sqrt(double n) {
+    return sqrt(n);
+}
+
+// Driver code
+int main() {
+    int sockfd;
+    char buffer[MAXLINE];
+    struct sockaddr_in servaddr, cliaddr;
+
+    // Creating socket file descriptor
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    memset(&cliaddr, 0, sizeof(cliaddr));
+
+    // Filling server information
+    servaddr.sin_family = AF_INET; // IPv4
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(PORT);
+
+    // Bind the socket with the server address
+    if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    int len, n;
+    len = sizeof(cliaddr); // len is value/result
+
+    while (1) {
+        n = recvfrom(sockfd, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *) &cliaddr, &len);
+        buffer[n] = '\0';
+        printf("Client: %s\n", buffer);
+
+        // Convert the received string to a double
+        double number = atof(buffer);
+
+        // Compute the square root
+        double result = compute_sqrt(number);
+
+        // Convert the result back to a string
+        sprintf(buffer, "%lf", result);
+
+        // Send the result back to the client
+        sendto(sockfd, (const char *)buffer, strlen(buffer), MSG_CONFIRM, (const struct sockaddr *) &cliaddr, len);
+        printf("Square root result sent.\n");
+    }
+
+    return 0;
+}
+
+
+CLIENT
+
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#define PORT 8080
+
+int main(int argc, char const *argv[]) {
+    int sock = 0, valread;
+    struct sockaddr_in serv_addr;
+    char buffer[1024] = {0};
+    char number[1024] = "8";  // Example number to send to server
+
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        printf("Socket creation error\n");
+        return -1;
+    }
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+        printf("\nInvalid address/ Address not supported\n");
+        return -1;
+    }
+
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        printf("\nConnection Failed\n");
+        return -1;
+    }
+
+    send(sock, number, strlen(number), 0);
+    printf("Number sent to server\n");
+    valread = read(sock, buffer, 1024);
+    printf("%s\n", buffer);
+
+    return 0;
+}
+
+
+Steps to Run the Code
+Save the server code in a file named server.c and the client code in a file named client.c.
+Open a terminal and navigate to the directory where these files are saved.
+Compile the server and client programs using gcc:
+sh
+Copy code
+gcc server.c -o server -lm  # The -lm flag links the math library
+gcc client.c -o client
+Run the server in one terminal:
+sh
+Copy code
+./server
+Open another terminal and run the client:
+sh
+Copy code
+./client
+The server will calculate the cube root of the number sent by the client (in this case, 8) and send the result back to the client. The client will then print the received result.
